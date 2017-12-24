@@ -1,6 +1,16 @@
 # hippo
 
-Easily manage variants of your configurations and centralize them for portability.
+**hippo** is a command line utility to manage variants of your configurations and
+(as a side-effect) centralize them for portability, as a safe and managed alternative to 
+the usual sysadmin route of `cp my.conf my.conf.backup`.
+
+**Author** Rohan Prabhu <rohan@rohanprabhu.com>
+
+> **NOTE** This is a project I am using to learn Rust and to get back to a systems
+> programming language after extensive years in managed languages and runtimes.
+> As a result most of the upcoming changes would be refactorings as I pick up on
+> the more rustic way of doing things; features and completeness are currently not
+> a priority.
 
 ## Usage
 
