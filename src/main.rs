@@ -10,7 +10,7 @@ use std::env;
 use std::path::Path;
 use std::fs;
 use journaling::journal::Journal;
-use clap::{App, SubCommand, Arg, Values};
+use clap::{App, SubCommand, Arg};
 
 fn init_hippo() -> Journal {
     let mut home_dir = if let Some(path) = env::home_dir() {
