@@ -7,6 +7,7 @@ use std::collections::HashMap;
 
 use self::chrono::prelude::*;
 use super::super::utils::simple_file_records::{SimpleRecord, SimpleFileRecords, MapsToSimpleRecord};
+use super::super::serde_json;
 
 static ROOT_JOURNAL_FILE_NAME: &'static str = "__hippo_journal";
 static MANAGED_FILE_SNAPSHOT_JOURNAL_FILE_NAME: &'static str = "__snaps_journal";
@@ -15,8 +16,38 @@ static DEFAULT_SNAPSHOT_TIME_FORMAT: &'static str = "%Y-%m-%d-%H:%M.%S";
 pub struct SnapshotEntry {
     snapshot_name: String,
     comment: String,
-    created_time: DateTime<Local>,
+    created_time: DateTime<Utc>,
     relative_file_path: PathBuf
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SerializableSnapshotEntry {
+    snapshot_name: String,
+    comment: String,
+    created_time: i64,
+    relative_file_path: String
+}
+
+impl SerializableSnapshotEntry {
+    pub fn to_snapshot_entry(&self) -> SnapshotEntry {
+        SnapshotEntry {
+            snapshot_name: self.snapshot_name.to_owned(),
+            comment: self.comment.to_owned(),
+            created_time: DateTime::<Utc>::from_utc(
+                NaiveDateTime::from_timestamp(self.created_time, 0),
+                Utc),
+            relative_file_path: Path::new(&self.relative_file_path).to_path_buf()
+        }
+    }
+
+    pub fn from_snapshot_entry(snapshot_entry: SnapshotEntry) -> SerializableSnapshotEntry {
+        SerializableSnapshotEntry {
+            snapshot_name: snapshot_entry.snapshot_name,
+            comment: snapshot_entry.comment,
+            created_time: snapshot_entry.created_time.timestamp(),
+            relative_file_path: String::from(snapshot_entry.relative_file_path.to_str().unwrap())
+        }
+    }
 }
 
 impl MapsToSimpleRecord for SnapshotEntry {
@@ -86,6 +117,16 @@ impl Journal {
         );
 
         info!("Found entries in root journal {:?}", root_journal.records);
+
+        let sse = SerializableSnapshotEntry {
+            comment: String::from("Hello"),
+            snapshot_name: String::from("hello"),
+            created_time: 5577,
+            relative_file_path: String::from("snap.hello")
+        };
+
+        let serialized = serde_json::to_string(&sse).unwrap();
+        println!("{}", serialized);
 
         Journal {
             root: Path::new(&root).to_path_buf(),

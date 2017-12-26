@@ -2,6 +2,12 @@
 #[macro_use] extern crate clap;
 extern crate env_logger;
 
+#[macro_use]
+extern crate serde_derive;
+
+extern crate serde;
+extern crate serde_json;
+
 mod journaling;
 mod snap;
 mod utils;
