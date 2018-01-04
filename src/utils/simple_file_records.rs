@@ -1,6 +1,6 @@
 use std::path::PathBuf;
-use std::fs::File;
-use std::io::{BufReader, BufRead, Write};
+use std::fs::{File, OpenOptions, create_dir_all};
+use std::io::{BufReader, BufRead, Write, Read};
 use std::collections::HashMap;
 
 pub struct SimpleRecord {
@@ -29,7 +29,25 @@ impl<T: MapsToSimpleRecord> Drop for SimpleFileRecords<T> {
 
 impl<T: MapsToSimpleRecord> SimpleFileRecords<T> {
     pub fn load(record_set_name: String, file_path: PathBuf) -> Self {
-        let f = File::open(&file_path).expect(format!("Cannot open file {}", file_path.to_str().unwrap()).as_str());
+        match file_path.parent() {
+            Some(prefix) => {
+                info!("Ensuring that a directory exists for {} (probing: {:?})", record_set_name, prefix);
+
+                create_dir_all(prefix)
+                    .expect(format!("Could not probe directory (or create) for journal {}", record_set_name).as_str());
+            }
+
+            None => {}
+        }
+
+        info!("Creating (or opening if already exists) for {} (probing: {:?})", record_set_name, file_path);
+
+        let f = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&file_path).expect("Error opening/creating journal file");
+
         let file = BufReader::new(&f);
         let mut records = HashMap::new();
 

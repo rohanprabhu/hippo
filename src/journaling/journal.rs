@@ -1,13 +1,10 @@
 extern crate chrono;
 
 use std::path::{Path, PathBuf};
-use std::fs;
-use std::fs::File;
 use std::collections::HashMap;
 
 use self::chrono::prelude::*;
 use super::super::utils::simple_file_records::{SimpleRecord, SimpleFileRecords, MapsToSimpleRecord};
-use super::super::serde_json;
 
 static ROOT_JOURNAL_FILE_NAME: &'static str = "__hippo_journal";
 static MANAGED_FILE_SNAPSHOT_JOURNAL_FILE_NAME: &'static str = "__snaps_journal";
@@ -108,25 +105,12 @@ impl Journal {
 
         info!("Loading journal into prefix {}", root);
 
-        // Create the initial journal if it is not found
-        Journal::initialize_journal_root(&root_str);
-
         let root_journal : SimpleFileRecords<RootJournalEntry> = SimpleFileRecords::load(
             String::from("root_journal"),
             Journal::get_root_journal_path(&root_str)
         );
 
         info!("Found entries in root journal {:?}", root_journal.records);
-
-        let sse = SerializableSnapshotEntry {
-            comment: String::from("Hello"),
-            snapshot_name: String::from("hello"),
-            created_time: 5577,
-            relative_file_path: String::from("snap.hello")
-        };
-
-        let serialized = serde_json::to_string(&sse).unwrap();
-        println!("{}", serialized);
 
         Journal {
             root: Path::new(&root).to_path_buf(),
@@ -154,51 +138,5 @@ impl Journal {
 
     fn get_root_journal_path(root: &str) -> PathBuf {
         Path::new(root).join(ROOT_JOURNAL_FILE_NAME)
-    }
-
-    fn initialize_journal_root(root: &str) {
-        let f = Path::new(&root);
-
-        if f.exists() {
-            if f.is_dir() {
-                info!("Found a directory at {}", root);
-            } else {
-                error!("The file exists, but is not a directory. Delete the node at {} or \
-                            use a different journal root. Cannot initialize", root);
-            }
-        } else {
-            info!("No directory found at {}. Attempting to initialize", root);
-            Journal::create_empty_journal(root);
-        }
-    }
-
-    fn create_empty_journal(root: &str) {
-        Journal::create_journal_directory(root);
-        Journal::create_empty_root_journal(root);
-    }
-
-    fn create_empty_root_journal(root: &str) {
-        let root_journal_path = Journal::get_root_journal_path(root);
-
-        if !root_journal_path.exists() {
-            info!("Created new root journal at {}", &root_journal_path.to_str().unwrap());
-            let root_journal = File::create(&root_journal_path);
-
-            if let Err(_) = root_journal {
-                panic!("Could not create root journal for at {}", &root_journal_path.to_str().unwrap());
-            }
-        } else {
-            info!("Root journal already exists at {}", &root_journal_path.to_str().unwrap());
-        }
-    }
-
-    fn create_journal_directory(root: &str) {
-        let f = fs::create_dir(root);
-
-        if f.is_err() {
-            panic!(f)
-        } else {
-            println!("Created new journal root at {}", root);
-        }
     }
 }
