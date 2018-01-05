@@ -105,7 +105,7 @@ impl Journal {
 
         info!("Loading journal into prefix {}", root);
 
-        let root_journal : SimpleFileRecords<RootJournalEntry> = SimpleFileRecords::load(
+        let root_journal : SimpleFileRecords<RootJournalEntry> = SimpleFileRecords::new(
             String::from("root_journal"),
             Journal::get_root_journal_path(&root_str)
         );
@@ -118,23 +118,24 @@ impl Journal {
         }
     }
 
-    pub fn get_managed_file(&self, key: String) -> Option<ManagedFile> {
-        if self.root_journal_config.records.contains_key(&key) {
-            Some(ManagedFile {
-                snapshots: HashMap::new(),
-                tangible_snapshot_journal: SimpleFileRecords::load(
-                    format!("journal({})", key),
-                    self.root.join(
+    pub fn contains_record(&self, key: String) -> bool {
+        self.root_journal_config.records.contains_key(&key)
+    }
+
+    /*
+    pub fn new_managed_file(&self, key: String) -> ManagedFile {
+        return ManagedFile {
+            snapshots: HashMap::new(),
+            tangible_snapshot_journal: SimpleFileRecords::new(
+                format!("journal({})", key),
+                self.root.join(
                     Path::join(
                         &self.root_journal_config.records.get(&key).unwrap().root,
                         MANAGED_FILE_SNAPSHOT_JOURNAL_FILE_NAME
                     )
                 ).to_path_buf())
-            })
-        } else {
-            None
         }
-    }
+    }*/
 
     fn get_root_journal_path(root: &str) -> PathBuf {
         Path::new(root).join(ROOT_JOURNAL_FILE_NAME)

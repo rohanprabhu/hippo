@@ -28,7 +28,7 @@ impl<T: MapsToSimpleRecord> Drop for SimpleFileRecords<T> {
 }
 
 impl<T: MapsToSimpleRecord> SimpleFileRecords<T> {
-    pub fn load(record_set_name: String, file_path: PathBuf) -> Self {
+    pub fn new(record_set_name: String, file_path: PathBuf) -> Self {
         match file_path.parent() {
             Some(prefix) => {
                 info!("Ensuring that a directory exists for {} (probing: {:?})", record_set_name, prefix);
