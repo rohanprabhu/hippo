@@ -1,3 +1,4 @@
+extern crate term;
 extern crate uuid;
 
 use std::path::PathBuf;
@@ -22,29 +23,46 @@ impl <'a> ManagedFileJournal<'a> {
         }
     }
 
-    pub fn get_managed_file(&mut self, file_path: &PathBuf) -> ManagedFile {
+    pub fn create_or_get_managed_file(&mut self, file_path: &PathBuf) -> ManagedFile  {
         let file_key_in_record = file_path.to_owned().into_os_string().into_string().unwrap();
 
         if !self.root_journal.contains_record(&file_key_in_record) {
-            info!("The file at path {:?} is not managed (no entry found in the root journal). Creating a new managed directory", file_path);
+            info!("The file at path {:?} is not managed (no entry found in the root journal).\
+                 Creating a new managed directory", file_path);
 
             self.new_managed_file(file_path);
         }
 
-        let mut managed_file_record = self.root_journal.get_record(&file_key_in_record);
+        return self.get_managed_file(file_path).unwrap()
+    }
 
-        ManagedFile::new(
-            file_key_in_record,
-            managed_file_record.root.join(MANAGED_FILE_SNAPSHOT_JOURNAL_FILE_NAME),
-            managed_file_record.root.to_owned()
-        )
+    pub fn get_managed_file(&self, file_path: &PathBuf) -> Option<ManagedFile> {
+        let file_key_in_record = file_path.to_owned().into_os_string().into_string().unwrap();
+
+        if !self.root_journal.contains_record(&file_key_in_record) {
+            None
+        } else {
+            let managed_file_record = self.root_journal.get_record(&file_key_in_record);
+
+            Some(ManagedFile::new(
+                file_key_in_record,
+                managed_file_record.root.join(MANAGED_FILE_SNAPSHOT_JOURNAL_FILE_NAME),
+                managed_file_record.root.to_owned()
+            ))
+        }
     }
 
     fn new_managed_file(&mut self, file_path: &PathBuf) -> PathBuf {
         let managed_file_actual_path = file_path.to_owned().into_os_string().into_string().unwrap();
 
         // Get a random string identifier for
-        println!("Adding entries for managing file at {}", managed_file_actual_path);
+        let mut t = term::stdout().unwrap();
+        t.fg(term::color::BRIGHT_MAGENTA);
+        t.attr(term::Attr::Bold);
+
+        write!(t, "Hippo ").unwrap();
+        t.reset();
+        println!("Hippo is not managing {}, creating new journal", managed_file_actual_path);
 
         info!("The root hosted by this journal is at {:?}", self.root_journal.root);
 

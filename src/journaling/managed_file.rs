@@ -1,3 +1,4 @@
+extern crate term;
 extern crate serde;
 extern crate serde_json;
 
@@ -7,21 +8,21 @@ extern crate whoami;
 use std::path::{Path, PathBuf};
 use std::ops::Add;
 use std::fs::copy;
+use std::fs::metadata;
 
 use self::chrono::prelude::*;
 use super::super::utils::simple_file_records::{SimpleRecord, SimpleFileRecords, MapsToSimpleRecord};
 
-static DEFAULT_SNAPSHOT_TIME_FORMAT: &'static str = "%Y-%m-%d-%H:%M.%S";
 static AUTO_SNAPSHOT_NAME_FORMAT: &'static str = "%Y%m.%d.%H%M.%S";
 static AUTO_SNAPSHOT_COMMENT_FORMAT: &'static str = "%a %b %e %T %Y";
 
 #[derive(Serialize, Deserialize)]
 pub struct SnapshotEntry {
-    snapshot_name: String,
-    comment: String,
-    created_time: DateTime<Utc>,
-    relative_file_path: String,
-    author: String
+    pub snapshot_name: String,
+    pub comment: String,
+    pub created_time: DateTime<Utc>,
+    pub relative_file_path: String,
+    pub author: String
 }
 
 impl MapsToSimpleRecord for SnapshotEntry {
@@ -40,13 +41,12 @@ impl MapsToSimpleRecord for SnapshotEntry {
 }
 
 pub enum SyntheticSnapshot {
-    Live,
     Null
 }
 
-pub enum Snapshot {
+pub enum Snapshot<'a> {
     Synthetic(SyntheticSnapshot),
-    TangibleSnapshot(SnapshotEntry)
+    TangibleSnapshot(&'a SnapshotEntry)
 }
 
 pub struct ManagedFile {
@@ -67,18 +67,18 @@ impl ManagedFile {
         }
     }
 
-    pub fn snap_current_state(&mut self, snapshot_name: Option<&String>, comment: Option<&String>, author: Option<&String>) {
+    pub fn snap_current_state(&mut self, snapshot_name: Option<String>, comment: Option<String>, author: Option<String>) {
         let created_time  = Utc::now();
         let created_local_time = created_time.with_timezone(&Local);
-        let author  = author.unwrap_or(&whoami::username()).to_owned();
-        let comment = comment.unwrap_or(&format!(
+        let author  = author.unwrap_or(whoami::username()).to_owned();
+        let comment = comment.unwrap_or(format!(
             "Created snapshot by {} on {}",
             author,
             created_local_time.format(AUTO_SNAPSHOT_COMMENT_FORMAT)
         )).to_owned();
 
         let snapshot_name = snapshot_name.unwrap_or(
-                &created_local_time.format(AUTO_SNAPSHOT_NAME_FORMAT
+                created_local_time.format(AUTO_SNAPSHOT_NAME_FORMAT
             ).to_string())
             .to_owned();
 
@@ -98,6 +98,22 @@ impl ManagedFile {
 
         info!("Updating managed file journal");
 
+        let mut t = term::stdout().unwrap();
+        t.fg(term::color::BRIGHT_GREEN).unwrap();
+        write!(t, "OK ");
+        t.reset();
+
+        write!(t, "Created snapshot ");
+        t.fg(term::color::BRIGHT_CYAN);
+        t.attr(term::Attr::Bold);
+        write!(t, "{} ", snapshot_name);
+        t.reset();
+
+        writeln!(t, "for {} (Size: {}B)",
+            self.target_file.to_owned().into_os_string().into_string().unwrap(),
+            metadata(&self.target_file).unwrap().len()
+        );
+
         self.tangible_snapshot_journal.add(SnapshotEntry {
             snapshot_name,
             relative_file_path: snapped_file_name,
@@ -105,6 +121,25 @@ impl ManagedFile {
             created_time,
             author
         });
+    }
+
+    pub fn get_snapshots(&self) -> Vec<Snapshot> {
+        let mut snapshots = Vec::<Snapshot>::new();
+        snapshots.push(Snapshot::Synthetic(SyntheticSnapshot::Null));
+
+        let mut tangible_entries : Vec<&SnapshotEntry> = self.tangible_snapshot_journal.records
+            .values()
+            .collect();
+
+        tangible_entries.sort_by(|a, b|
+            a.created_time.cmp(&b.created_time)
+        );
+
+        for snapshot_entry in tangible_entries {
+            snapshots.push(Snapshot::TangibleSnapshot(snapshot_entry))
+        }
+
+        return snapshots;
     }
 }
 
