@@ -35,7 +35,7 @@ fn init_hippo() -> Journal {
 
 fn main() {
     env_logger::init().unwrap();
-    let journal = init_hippo();
+    let mut journal = init_hippo();
 
     let arg_matches = App::new("hippo")
         .version("0.1")
@@ -62,6 +62,6 @@ fn main() {
                     fs::canonicalize(Path::new(path).to_path_buf()).unwrap())
             .collect::<Vec<_>>();
 
-        snap::snap(&journal, absolute_paths);
+        snap::snap(&mut journal, absolute_paths);
     }
 }

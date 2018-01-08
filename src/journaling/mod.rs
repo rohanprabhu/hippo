@@ -1,2 +1,3 @@
 pub mod journal;
-pub mod snaps;
+pub mod managed_file;
+pub mod managed_file_journal;

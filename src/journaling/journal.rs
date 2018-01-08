@@ -1,76 +1,10 @@
 extern crate chrono;
 
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
 
-use self::chrono::prelude::*;
 use super::super::utils::simple_file_records::{SimpleRecord, SimpleFileRecords, MapsToSimpleRecord};
 
 static ROOT_JOURNAL_FILE_NAME: &'static str = "__hippo_journal";
-static MANAGED_FILE_SNAPSHOT_JOURNAL_FILE_NAME: &'static str = "__snaps_journal";
-static DEFAULT_SNAPSHOT_TIME_FORMAT: &'static str = "%Y-%m-%d-%H:%M.%S";
-
-pub struct SnapshotEntry {
-    snapshot_name: String,
-    comment: String,
-    created_time: DateTime<Utc>,
-    relative_file_path: PathBuf
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct SerializableSnapshotEntry {
-    snapshot_name: String,
-    comment: String,
-    created_time: i64,
-    relative_file_path: String
-}
-
-impl SerializableSnapshotEntry {
-    pub fn to_snapshot_entry(&self) -> SnapshotEntry {
-        SnapshotEntry {
-            snapshot_name: self.snapshot_name.to_owned(),
-            comment: self.comment.to_owned(),
-            created_time: DateTime::<Utc>::from_utc(
-                NaiveDateTime::from_timestamp(self.created_time, 0),
-                Utc),
-            relative_file_path: Path::new(&self.relative_file_path).to_path_buf()
-        }
-    }
-
-    pub fn from_snapshot_entry(snapshot_entry: SnapshotEntry) -> SerializableSnapshotEntry {
-        SerializableSnapshotEntry {
-            snapshot_name: snapshot_entry.snapshot_name,
-            comment: snapshot_entry.comment,
-            created_time: snapshot_entry.created_time.timestamp(),
-            relative_file_path: String::from(snapshot_entry.relative_file_path.to_str().unwrap())
-        }
-    }
-}
-
-impl MapsToSimpleRecord for SnapshotEntry {
-    fn from(_: SimpleRecord) -> Self {
-        unimplemented!()
-    }
-
-    fn to(&self) -> SimpleRecord {
-        unimplemented!()
-    }
-}
-
-pub enum SyntheticSnapshot {
-    Live,
-    Null
-}
-
-pub enum Snapshot {
-    Synthetic(SyntheticSnapshot),
-    TangibleSnapshot(SnapshotEntry)
-}
-
-pub struct ManagedFile {
-    pub snapshots: HashMap<String, Snapshot>,
-    tangible_snapshot_journal: SimpleFileRecords<SnapshotEntry>
-}
 
 #[derive(Debug)]
 pub struct RootJournalEntry {
@@ -95,7 +29,7 @@ impl MapsToSimpleRecord for RootJournalEntry {
 }
 
 pub struct Journal {
-    root: PathBuf,
+    pub root: PathBuf,
     pub root_journal_config: SimpleFileRecords<RootJournalEntry>
 }
 
@@ -118,8 +52,19 @@ impl Journal {
         }
     }
 
-    pub fn contains_record(&self, key: String) -> bool {
-        self.root_journal_config.records.contains_key(&key)
+    pub fn contains_record(&self, key: &String) -> bool {
+        self.root_journal_config.records.contains_key(key)
+    }
+
+    pub fn get_record(&self, key: &String) -> &RootJournalEntry {
+        self.root_journal_config.get_record(key)
+    }
+
+    pub fn add_record(&mut self, file_path: PathBuf, managed_root: PathBuf) {
+        self.root_journal_config.add(RootJournalEntry {
+            key: file_path.into_os_string().into_string().unwrap(),
+            root: managed_root
+        })
     }
 
     /*

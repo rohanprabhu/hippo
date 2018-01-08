@@ -1,18 +1,21 @@
 [package]
-name = "hippo"
-version = "0.1.0"
-license = "Apache-2.0"
-keywords = ["utils", "config"]
-homepage = "https://github.com/rohanprabhu/hippo"
-repository = "https://github.com/rohanprabhu/hippo"
-authors = ["Rohan Prabhu <rohan@rohanprabhu.com>"]
+name         = "hippo"
+version      = "0.1.0"
+license      = "Apache-2.0"
+keywords     = ["utils", "config"]
+homepage     = "https://github.com/rohanprabhu/hippo"
+repository   = "https://github.com/rohanprabhu/hippo"
+authors      = ["Rohan Prabhu <rohan@rohanprabhu.com>"]
 
 [dependencies]
-log = "0.3.8"
-clap = "~2.29"
-env_logger = "0.4.3"
-chrono = "0.4"
+log          = "0.3.8"
+clap         = "~2.29"
+env_logger   = "0.4.3"
+chrono       = { version = "0.4", features = ["serde"] }
+uuid         = { version = "0.4", features = ["serde", "v4"] }
 
-serde = "1.0"
+serde        = "1.0"
 serde_derive = "1.0"
-serde_json = "1.0"
+serde_json   = "1.0"
+
+whoami       = "0.2.0"

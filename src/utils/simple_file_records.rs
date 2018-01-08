@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::fs::{File, OpenOptions, create_dir_all};
-use std::io::{BufReader, BufRead, Write, Read};
+use std::io::{BufReader, BufRead, Write};
 use std::collections::HashMap;
 
 pub struct SimpleRecord {
@@ -74,6 +74,10 @@ impl<T: MapsToSimpleRecord> SimpleFileRecords<T> {
     pub fn add(&mut self, record: T) {
         self.dirty = true;
         self.records.insert(record.to().key, record);
+    }
+
+    pub fn get_record(&self, key: &String) -> &T {
+        self.records.get(key).unwrap()
     }
 
     /*
