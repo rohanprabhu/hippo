@@ -8,6 +8,7 @@ extern crate serde_derive;
 
 extern crate serde;
 extern crate serde_json;
+extern crate colored;
 
 mod journaling;
 mod snap;
@@ -20,6 +21,8 @@ use std::fs;
 use journaling::journal::Journal;
 use clap::{App, SubCommand, Arg};
 use list::HippoList;
+
+use colored::*;
 
 fn init_hippo() -> Journal {
     let mut home_dir = if let Some(path) = env::home_dir() {
@@ -44,10 +47,14 @@ impl From<list::ListError> for HippoError {
     }
 }
 
+impl From<clap::Error> for HippoError {
+    fn from(_: clap::Error) -> Self { HippoError {} }
+}
+
 fn main_func() -> Result<(), HippoError> {
     let mut journal = init_hippo();
 
-    let arg_matches = App::new("hippo")
+    let mut clap_app = App::new("hippo".magenta().to_string())
         .version("0.1")
         .author("Rohan Prabhu <rohan@rohanprabhu.com>")
         .about("Variant manager for configuration-like files. Hippo keeps track of everything. EVERYTHING.")
@@ -89,8 +96,9 @@ fn main_func() -> Result<(), HippoError> {
                 .index(1)
                 .multiple(true)
             )
-        )
-        .get_matches();
+        );
+
+    let arg_matches = clap_app.to_owned().get_matches();
 
     if let Some(matches) = arg_matches.subcommand_matches("snap") {
         let raw_file_paths = values_t!(matches.values_of("FILE"), String).unwrap();
@@ -116,6 +124,8 @@ fn main_func() -> Result<(), HippoError> {
             .collect::<Vec<_>>();
 
         HippoList::new().list(&mut journal, absolute_paths)?;
+    } else {
+        clap_app.print_help()?;
     }
 
     Ok(())

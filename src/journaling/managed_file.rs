@@ -3,12 +3,19 @@ extern crate serde;
 extern crate serde_json;
 
 extern crate chrono;
-extern crate whoami;
+extern crate users;
+
+extern crate colored;
+extern crate pretty_bytes;
 
 use std::path::{Path, PathBuf};
 use std::ops::Add;
 use std::fs::copy;
 use std::fs::metadata;
+
+use pretty_bytes::converter::convert;
+
+use self::users::{get_user_by_uid, get_current_uid};
 
 use self::chrono::prelude::*;
 use super::super::utils::simple_file_records::{SimpleRecord, SimpleFileRecords, MapsToSimpleRecord};
@@ -70,7 +77,7 @@ impl ManagedFile {
     pub fn snap_current_state(&mut self, snapshot_name: Option<String>, comment: Option<String>, author: Option<String>) {
         let created_time  = Utc::now();
         let created_local_time = created_time.with_timezone(&Local);
-        let author  = author.unwrap_or(whoami::username()).to_owned();
+        let author  = author.unwrap_or(get_user_by_uid(get_current_uid()).unwrap().name().to_string()).to_owned();
         let comment = comment.unwrap_or(format!(
             "Created snapshot by {} on {}",
             author,
@@ -100,6 +107,7 @@ impl ManagedFile {
 
         let mut t = term::stdout().unwrap();
         t.fg(term::color::BRIGHT_GREEN).unwrap();
+        println!("{} Created snapshot {} for {} (Size: {}B)", )
         write!(t, "OK ");
         t.reset();
 
