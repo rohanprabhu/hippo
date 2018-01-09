@@ -51,6 +51,10 @@ impl From<clap::Error> for HippoError {
     fn from(_: clap::Error) -> Self { HippoError {} }
 }
 
+impl From<snap::SnapError> for HippoError {
+    fn from(_: snap::SnapError) -> Self { HippoError }
+}
+
 fn main_func() -> Result<(), HippoError> {
     let mut journal = init_hippo();
 
@@ -113,7 +117,7 @@ fn main_func() -> Result<(), HippoError> {
                    value_t!(matches.value_of("name"), String).ok(),
                    value_t!(matches.value_of("comment"), String).ok(),
                    absolute_paths
-        );
+        )?;
 
     } else if let Some(matches) = arg_matches.subcommand_matches("list") {
         let raw_file_paths = values_t!(matches.values_of("FILE"), String).unwrap();

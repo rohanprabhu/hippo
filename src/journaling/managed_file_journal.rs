@@ -4,6 +4,7 @@ extern crate uuid;
 use std::path::PathBuf;
 use std::path::Path;
 use std::fs::{create_dir_all, OpenOptions};
+use std::{ffi, io};
 
 use journaling::journal::*;
 use journaling::managed_file::*;
@@ -17,6 +18,16 @@ pub struct ManagedFileJournal<'a> {
     root_journal: &'a mut Journal
 }
 
+pub struct ManagedFileJournalError;
+
+impl From<ffi::OsString> for ManagedFileJournalError {
+    fn from(_: ffi::OsString) -> Self { ManagedFileJournalError }
+}
+
+impl From<io::Error> for ManagedFileJournalError {
+    fn from(_: io::Error) -> Self { ManagedFileJournalError }
+}
+
 impl <'a> ManagedFileJournal<'a> {
     pub fn for_journal(root_journal: &'a mut Journal) -> ManagedFileJournal {
         ManagedFileJournal {
@@ -24,8 +35,8 @@ impl <'a> ManagedFileJournal<'a> {
         }
     }
 
-    pub fn create_or_get_managed_file(&mut self, file_path: &PathBuf) -> ManagedFile  {
-        let file_key_in_record = file_path.to_owned().into_os_string().into_string().unwrap();
+    pub fn create_or_get_managed_file(&'a mut self, file_path: &'a PathBuf) -> Result<ManagedFile<'a>, ManagedFileJournalError>  {
+        let file_key_in_record = file_path.to_owned().into_os_string().into_string()?;
 
         if !self.root_journal.contains_record(&file_key_in_record) {
             info!("The file at path {:?} is not managed (no entry found in the root journal).\
@@ -34,11 +45,13 @@ impl <'a> ManagedFileJournal<'a> {
             self.new_managed_file(file_path);
         }
 
-        return self.get_managed_file(file_path).unwrap()
+        return Ok(self.get_managed_file(file_path)
+            .expect("Assertion failure. A new managed file was created after detecting an absence, but is still returning as not-present")
+        )
     }
 
-    pub fn get_managed_file(&self, file_path: &PathBuf) -> Option<ManagedFile> {
-        let file_key_in_record = file_path.to_owned().into_os_string().into_string().unwrap();
+    pub fn get_managed_file(&'a self, file_path: &'a PathBuf) -> Option<ManagedFile<'a>> {
+        let file_key_in_record = file_path.into_os_string().into_string().unwrap();
 
         if !self.root_journal.contains_record(&file_key_in_record) {
             None
@@ -46,9 +59,9 @@ impl <'a> ManagedFileJournal<'a> {
             let managed_file_record = self.root_journal.get_record(&file_key_in_record);
 
             Some(ManagedFile::new(
-                file_key_in_record,
+                &file_path,
                 managed_file_record.root.join(MANAGED_FILE_SNAPSHOT_JOURNAL_FILE_NAME),
-                managed_file_record.root.to_owned()
+                &managed_file_record.root
             ))
         }
     }
