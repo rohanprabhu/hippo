@@ -1,4 +1,4 @@
-extern crate term;
+extern crate colored;
 extern crate uuid;
 
 use std::path::PathBuf;
@@ -8,6 +8,7 @@ use std::fs::{create_dir_all, OpenOptions};
 use journaling::journal::*;
 use journaling::managed_file::*;
 
+use self::colored::*;
 use self::uuid::Uuid;
 
 static MANAGED_FILE_SNAPSHOT_JOURNAL_FILE_NAME: &'static str = "__snaps_journal";
@@ -55,14 +56,7 @@ impl <'a> ManagedFileJournal<'a> {
     fn new_managed_file(&mut self, file_path: &PathBuf) -> PathBuf {
         let managed_file_actual_path = file_path.to_owned().into_os_string().into_string().unwrap();
 
-        // Get a random string identifier for
-        let mut t = term::stdout().unwrap();
-        t.fg(term::color::BRIGHT_MAGENTA);
-        t.attr(term::Attr::Bold);
-
-        write!(t, "Hippo ").unwrap();
-        t.reset();
-        println!("Hippo is not managing {}, creating new journal", managed_file_actual_path);
+        println!("{} is not managing {}, creating new journal", "Hippo".magenta(), managed_file_actual_path);
 
         info!("The root hosted by this journal is at {:?}", self.root_journal.root);
 

@@ -20,7 +20,7 @@ use std::path::Path;
 use std::fs;
 use journaling::journal::Journal;
 use clap::{App, SubCommand, Arg};
-use list::HippoList;
+use list::list;
 
 use colored::*;
 
@@ -123,7 +123,7 @@ fn main_func() -> Result<(), HippoError> {
                 fs::canonicalize(Path::new(path).to_path_buf()).unwrap())
             .collect::<Vec<_>>();
 
-        HippoList::new().list(&mut journal, absolute_paths)?;
+        list(&mut journal, absolute_paths)?;
     } else {
         clap_app.print_help()?;
     }

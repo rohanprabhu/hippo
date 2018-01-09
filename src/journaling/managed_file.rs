@@ -1,4 +1,3 @@
-extern crate term;
 extern crate serde;
 extern crate serde_json;
 
@@ -13,7 +12,8 @@ use std::ops::Add;
 use std::fs::copy;
 use std::fs::metadata;
 
-use pretty_bytes::converter::convert;
+use self::colored::*;
+use self::pretty_bytes::converter::convert;
 
 use self::users::{get_user_by_uid, get_current_uid};
 
@@ -53,13 +53,19 @@ pub enum SyntheticSnapshot {
 
 pub enum Snapshot<'a> {
     Synthetic(SyntheticSnapshot),
-    TangibleSnapshot(&'a SnapshotEntry)
+    Tangible(&'a SnapshotEntry)
 }
 
 pub struct ManagedFile {
     tangible_snapshot_journal: SimpleFileRecords<SnapshotEntry>,
     snapshot_storage: PathBuf,
     target_file: PathBuf
+}
+
+pub struct SnapshotsListing<'a> {
+    pub snapshots: Vec<Snapshot<'a>>,
+    pub synthetic_count: u8,
+    pub tangible_count: u8
 }
 
 impl ManagedFile {
@@ -105,21 +111,11 @@ impl ManagedFile {
 
         info!("Updating managed file journal");
 
-        let mut t = term::stdout().unwrap();
-        t.fg(term::color::BRIGHT_GREEN).unwrap();
-        println!("{} Created snapshot {} for {} (Size: {}B)", )
-        write!(t, "OK ");
-        t.reset();
-
-        write!(t, "Created snapshot ");
-        t.fg(term::color::BRIGHT_CYAN);
-        t.attr(term::Attr::Bold);
-        write!(t, "{} ", snapshot_name);
-        t.reset();
-
-        writeln!(t, "for {} (Size: {}B)",
-            self.target_file.to_owned().into_os_string().into_string().unwrap(),
-            metadata(&self.target_file).unwrap().len()
+        println!("{} Created snapshot {} for {} (Size: {})",
+           "OK".green().bold(),
+            snapshot_name.as_str().cyan(),
+            self.target_file.to_owned().into_os_string().into_string().unwrap().as_str().bold(),
+            convert(metadata(&self.target_file).unwrap().len() as f64)
         );
 
         self.tangible_snapshot_journal.add(SnapshotEntry {
@@ -131,9 +127,13 @@ impl ManagedFile {
         });
     }
 
-    pub fn get_snapshots(&self) -> Vec<Snapshot> {
+    pub fn get_snapshots(&self) -> SnapshotsListing {
         let mut snapshots = Vec::<Snapshot>::new();
+        let mut synthetic_count : u8 = 0;
+        let mut tangible_count : u8 = 0;
+
         snapshots.push(Snapshot::Synthetic(SyntheticSnapshot::Null));
+        synthetic_count = synthetic_count + 1;
 
         let mut tangible_entries : Vec<&SnapshotEntry> = self.tangible_snapshot_journal.records
             .values()
@@ -144,10 +144,15 @@ impl ManagedFile {
         );
 
         for snapshot_entry in tangible_entries {
-            snapshots.push(Snapshot::TangibleSnapshot(snapshot_entry))
+            snapshots.push(Snapshot::Tangible(snapshot_entry));
+            tangible_count = tangible_count + 1;;
         }
 
-        return snapshots;
+        return SnapshotsListing {
+            snapshots,
+            synthetic_count,
+            tangible_count
+        }
     }
 }
 
