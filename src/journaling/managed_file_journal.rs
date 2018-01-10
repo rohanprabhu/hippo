@@ -9,8 +9,8 @@ use std::{ffi, io};
 use journaling::journal::*;
 use journaling::managed_file::*;
 
-use self::colored::*;
 use self::uuid::Uuid;
+use commons::HIPPO_PRINTABLE;
 
 static MANAGED_FILE_SNAPSHOT_JOURNAL_FILE_NAME: &'static str = "__snaps_journal";
 
@@ -29,7 +29,7 @@ impl From<io::Error> for ManagedFileJournalError {
 }
 
 impl <'a> ManagedFileJournal<'a> {
-    pub fn for_journal(root_journal: &'a mut Journal) -> ManagedFileJournal {
+    pub fn for_journal(root_journal: &'a mut Journal) -> ManagedFileJournal<'a> {
         ManagedFileJournal {
             root_journal
         }
@@ -51,7 +51,7 @@ impl <'a> ManagedFileJournal<'a> {
     }
 
     pub fn get_managed_file(&'a self, file_path: &'a PathBuf) -> Option<ManagedFile<'a>> {
-        let file_key_in_record = file_path.into_os_string().into_string().unwrap();
+        let file_key_in_record = file_path.to_owned().into_os_string().into_string().unwrap();
 
         if !self.root_journal.contains_record(&file_key_in_record) {
             None
@@ -69,7 +69,7 @@ impl <'a> ManagedFileJournal<'a> {
     fn new_managed_file(&mut self, file_path: &PathBuf) -> PathBuf {
         let managed_file_actual_path = file_path.to_owned().into_os_string().into_string().unwrap();
 
-        println!("{} is not managing {}, creating new journal", "Hippo".magenta(), managed_file_actual_path);
+        println!("{} is not managing {}, creating new journal", HIPPO_PRINTABLE.to_string(), managed_file_actual_path);
 
         info!("The root hosted by this journal is at {:?}", self.root_journal.root);
 

@@ -16,12 +16,13 @@ impl From<ManagedFileJournalError> for SnapError {
 pub fn snap(
     journal: &mut Journal, name: Option<String>, comment: Option<String>, file_paths: Vec<PathBuf>
 ) -> Result<(), SnapError> {
-    let mut managed_file_journal = ManagedFileJournal::for_journal(journal);
+    let managed_file_journal = ManagedFileJournal::for_journal(journal);
 
-    for file_path in file_paths {
+    for file_path in file_paths.iter() {
+        let mut managed_file_journal_mutable = &mut managed_file_journal;
         println!("Creating snapshot for {}", file_path.to_owned().into_os_string().into_string().unwrap());
 
-        let managed_file = managed_file_journal.create_or_get_managed_file(&file_path);
+        let managed_file = managed_file_journal_mutable.create_or_get_managed_file(&file_path);
         managed_file?.snap_current_state(name.to_owned(), comment.to_owned(), None)?;
     }
 

@@ -1,6 +1,7 @@
 #[macro_use] extern crate log;
 #[macro_use] extern crate clap;
 #[macro_use] extern crate prettytable;
+#[macro_use] extern crate lazy_static;
 extern crate env_logger;
 
 #[macro_use]
@@ -14,6 +15,7 @@ mod journaling;
 mod snap;
 mod list;
 mod utils;
+mod commons;
 
 use std::env;
 use std::path::Path;
