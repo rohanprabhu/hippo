@@ -1,35 +1,34 @@
 extern crate chrono;
-extern crate term;
+extern crate colored;
 
 use std::path::PathBuf;
 use std::io::Error;
 
-use self::term::StdoutTerminal;
-
 use journaling::journal::Journal;
-use journaling::managed_file::Snapshot;
-use journaling::managed_file::SyntheticSnapshot;
+use journaling::managed_file::{Snapshot, SnapshotEntry, SyntheticSnapshot};
 use journaling::managed_file_journal::*;
 
 use prettytable::Table;
 use prettytable::format::{FormatBuilder, TableFormat};
 
+use self::colored::*;
 use self::chrono::prelude::*;
 
 static DEFAULT_SNAPSHOT_TIME_FORMAT: &'static str = "%a %b %e %T %Y";
 
-pub struct HippoList {
-    format: TableFormat,
-    out: Box<StdoutTerminal>
+//lazy_static! {
+// No clue why lazy_static! is not working, will fix it.
+fn hippo_list_display_table_format() -> TableFormat {
+    FormatBuilder::new()
+        .column_separator(' ')
+        .borders(' ')
+        .padding(0, 1)
+        .build()
 }
+//    };
+//}
 
 pub struct ListError;
-
-impl From<term::Error> for ListError {
-    fn from(_: term::Error) -> Self {
-        ListError {}
-    }
-}
 
 impl From<Error> for ListError {
     fn from(_: Error) -> Self {
@@ -37,91 +36,67 @@ impl From<Error> for ListError {
     }
 }
 
-impl HippoList {
-    pub fn new() -> HippoList {
-        HippoList {
-            format: FormatBuilder::new()
-                .column_separator(' ')
-                .borders(' ')
-                .padding(0, 1)
-                .build(),
-            out: term::stdout().unwrap()
-        }
-    }
+pub fn list(journal: &mut Journal, file_paths: Vec<PathBuf>) -> Result<(), ListError> {
+    let managed_file_journal = ManagedFileJournal::for_journal(journal);
+    let mut start = true;
 
-    pub fn list(&mut self, journal: &mut Journal, file_paths: Vec<PathBuf>) -> Result<(), ListError> {
-        let managed_file_journal = ManagedFileJournal::for_journal(journal);
-        let mut start = true;
+    for file_path in file_paths {
+        let file_path_string = file_path.to_owned().into_os_string().into_string()
+            .expect("Could not read the file path, it might contain invalid characters");
 
-        for file_path in file_paths {
-            let file_path_string = file_path.to_owned().into_os_string().into_string()
-                .expect("Could not read the file path, it might contain invalid characters");
+        info!("Probing for snapshots for {:?}", file_path);
 
-            info!("Probing for snapshots for {:?}", file_path);
+        let managed_file = managed_file_journal.get_managed_file(&file_path);
 
-            let managed_file = managed_file_journal.get_managed_file(&file_path);
+        if !start { println!(); } else { start = false; }
 
-            if !start { println!(); } else { start = false; }
+        match managed_file {
+            Some(managed_file) => {
+                let snapshots_listing = managed_file.get_snapshots();
 
-            match managed_file {
-                Some(managed_file) => {
-                    let snapshots = managed_file.get_snapshots();
+                println!("{} {}, {} snapshots (+{} synthetic)", "OK".green(), file_path_string,
+                         snapshots_listing.tangible_count, snapshots_listing.synthetic_count);
+                println!();
 
-                    self.out.fg(term::color::BRIGHT_GREEN)?;
-                    self.out.attr(term::Attr::Bold)?;
-                    write!(self.out, "OK ")?;
+                print_snapshot_table(snapshots_listing.snapshots);
+            }
 
-                    self.out.reset()?;
-                    writeln!(self.out, "{}, {} snapshots", file_path_string, snapshots.len())?;
-                    writeln!(self.out)?;
-
-                    self.print_snapshot_table(managed_file.get_snapshots());
-                }
-
-                None => {
-                    self.out.fg(term::color::BRIGHT_RED)?;
-                    self.out.attr(term::Attr::Bold)?;
-                    self.out.reset()?;
-
-                    write!(self.out, "WARN ")?;
-                    writeln!(self.out, "{}, file not managed by hippo", file_path_string)?;
-                }
+            None => {
+                println!("{} {}, file not managed by {}", "WARN".red(), file_path_string, "hippo".magenta());
             }
         }
-
-        Ok(())
     }
 
-    fn print_snapshot_table(&self, snapshots: Vec<Snapshot>) {
-        let mut table = Table::new();
-        table.add_row(row![b->"Name", b->"Comment", b->"Author", b->"Creation Time"]);
-        table.add_row(row!["    ", "    " , "    ", "    "]);
+    Ok(())
+}
 
-        for snapshot in snapshots {
-            match snapshot {
-                Snapshot::Synthetic(some) => {
-                    match some {
-                        SyntheticSnapshot::Null => {
-                            table.add_row(row!["(null)", "(synthetic snapshot; noent inode)", "", "Before all time"]);
-                        }
+fn print_snapshot_table(snapshots: Vec<Snapshot>) {
+    let mut table = Table::new();
+    table.add_row(row![b->"Name", b->"Comment", b->"Author", b->"Creation Time"]);
 
-                        /*
-                    SyntheticSnapshot::Live => {
-                        table.add_row(row!["(live)", "(synthetic snapshot; edits made)", "", "Absolute current moment"]);
-                    }*/
-                    }
-                }
-
-                Snapshot::TangibleSnapshot(entry) => {
-                    let local_creation_date = entry.created_time.with_timezone(&Local)
-                        .format(DEFAULT_SNAPSHOT_TIME_FORMAT).to_string();
-
-                    table.add_row(row![entry.snapshot_name, entry.comment, entry.author, local_creation_date]);
-                }
-            }
+    for snapshot in snapshots {
+        match snapshot {
+            Snapshot::Synthetic(some) => process_table_for_synthetic(&mut table, &some),
+            Snapshot::Tangible(entry) => process_table_for_snapshot_entry(&mut table, &entry)
         }
-
-        table.set_format(self.format);
-        table.print_tty(true);
     }
+
+    table.set_format(hippo_list_display_table_format());
+    table.print_tty(true);
+}
+
+fn process_table_for_synthetic(table: &mut Table, synthetic_snapshot: &SyntheticSnapshot) {
+    match synthetic_snapshot {
+        &SyntheticSnapshot::Null => {
+            table.add_row(row!["(null)", "(synthetic snapshot; noent inode)", "", "Before all time"]);
+        }
+    }
+}
+
+fn process_table_for_snapshot_entry(table: &mut Table, snapshot_entry: &SnapshotEntry) {
+    let local_creation_date = snapshot_entry.created_time.with_timezone(&Local)
+        .format(DEFAULT_SNAPSHOT_TIME_FORMAT).to_string();
+
+    table.add_row(row![snapshot_entry.snapshot_name, snapshot_entry.comment,
+        snapshot_entry.author, local_creation_date]);
 }

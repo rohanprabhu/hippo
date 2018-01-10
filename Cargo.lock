@@ -119,6 +119,7 @@ dependencies = [
  "clap 2.29.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "colored 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "lazy_static 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "pretty-bytes 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "prettytable-rs 0.6.7 (registry+https://github.com/rust-lang/crates.io-index)",

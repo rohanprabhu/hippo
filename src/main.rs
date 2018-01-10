@@ -20,7 +20,7 @@ use std::path::Path;
 use std::fs;
 use journaling::journal::Journal;
 use clap::{App, SubCommand, Arg};
-use list::HippoList;
+use list::list;
 
 use colored::*;
 
@@ -49,6 +49,10 @@ impl From<list::ListError> for HippoError {
 
 impl From<clap::Error> for HippoError {
     fn from(_: clap::Error) -> Self { HippoError {} }
+}
+
+impl From<snap::SnapError> for HippoError {
+    fn from(_: snap::SnapError) -> Self { HippoError }
 }
 
 fn main_func() -> Result<(), HippoError> {
@@ -113,7 +117,7 @@ fn main_func() -> Result<(), HippoError> {
                    value_t!(matches.value_of("name"), String).ok(),
                    value_t!(matches.value_of("comment"), String).ok(),
                    absolute_paths
-        );
+        )?;
 
     } else if let Some(matches) = arg_matches.subcommand_matches("list") {
         let raw_file_paths = values_t!(matches.values_of("FILE"), String).unwrap();
@@ -123,7 +127,7 @@ fn main_func() -> Result<(), HippoError> {
                 fs::canonicalize(Path::new(path).to_path_buf()).unwrap())
             .collect::<Vec<_>>();
 
-        HippoList::new().list(&mut journal, absolute_paths)?;
+        list(&mut journal, absolute_paths)?;
     } else {
         clap_app.print_help()?;
     }
