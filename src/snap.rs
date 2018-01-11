@@ -18,11 +18,11 @@ pub fn snap(
 ) -> Result<(), SnapError> {
     let mut managed_file_journal = ManagedFileJournal::for_journal(journal);
 
-    for file_path in file_paths.iter() {
-        //println!("Creating snapshot for {}", file_path.to_owned().into_os_string().into_string().unwrap());
+    for ref file_path in file_paths {
+        println!("Creating snapshot for {}", file_path.to_owned().into_os_string().into_string().unwrap());
 
-        managed_file_journal.create_or_get_managed_file(file_path);
-        //managed_file?.snap_current_state(name.to_owned(), comment.to_owned(), None)?;
+        let mut managed_file = managed_file_journal.create_or_get_managed_file(file_path)?;
+        managed_file.snap_current_state(name.to_owned(), comment.to_owned(), None)?;
     }
 
     Ok(())
